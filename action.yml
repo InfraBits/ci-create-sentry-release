@@ -1,0 +1,43 @@
+name: Create sentry release
+description: Create a sentry release for a given project
+
+inputs:
+  api_key:
+    description: Sentry API key
+    required: true
+  organization:
+    description: Sentry organization slug
+    required: true
+  project:
+    description: Sentry project slug
+    required: true
+  version:
+    description: Release version
+    required: true
+  upload_sourcemaps:
+    description: Whether to upload source maps from the build directory
+    required: false
+    default: "true"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Sentry CLI
+      shell: bash
+      run: curl -sL https://sentry.io/get-cli/ | bash
+
+    - name: Create and publish release
+      shell: bash
+      run: |
+        sentry-cli releases new "${{ inputs.version }}"
+
+        if [[ "${{ inputs.upload_sourcemaps }}" == "true" ]];
+        then
+          sentry-cli sourcemaps upload build --release "${{ inputs.version }}"
+        fi
+
+        sentry-cli releases finalize "${{ inputs.version }}"
+      env:
+        SENTRY_AUTH_TOKEN: ${{ inputs.api_key }}
+        SENTRY_ORG: ${{ inputs.organization }}
+        SENTRY_PROJECT: ${{ inputs.project }}
